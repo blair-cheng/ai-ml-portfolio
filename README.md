@@ -1,3 +1,10 @@
+
+
+
+Per Northwestern University’s academic integrity rules, source code from course assignments may not be made public.
+If you’re a recruiter or hiring manager interested in viewing the actual implementations, please contact me with your GitHub username or email — I’ll grant temporary read-only access to the private repository upon request.
+
+
 # ai-ml-portfolio
 
 
