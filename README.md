@@ -2,10 +2,15 @@
 
 本目录是一个本地 NVDL 网格策略回测环境。
 
+## 目标
+1.维持定期收割
+2.核心目标是实现在中间震荡区间反复网格交易获得收益，在超额上涨区间逐渐减仓，预防暴跌，在超跌区间维持两个平衡：控制超跌区间手中资产的降低幅度的同时，持续加仓
+
 ## 当前策略
 
 - 标的：`NVDL`
 - 数据：`1h` 小时 K 线
+- 参数文件：`config/default.yaml`
 - 初始资金：`10000`
 - 初始买入：`200` 股
 - 网格步长：`2` 美元
@@ -136,5 +141,8 @@ Yahoo 当前可用范围：
 ## 运行
 
 ```bash
+python -m pip install -r requirements.txt
 python playground.py
 ```
+
+修改策略参数时，优先改 `config/default.yaml`，不要直接改 `playground.py` 顶部常量。

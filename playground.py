@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import yaml
 import yfinance as yf
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -8,39 +9,52 @@ from backtesting import Strategy
 from backtesting.lib import FractionalBacktest
 
 
-SYMBOL = "NVDL"
-START = "2023-01-01"
-END = None
-CASH = 10_000
-COMMISSION = 0.001
-SHOW_PLOT = True
-DATA_DIR = Path("data")
-LOG_DIR = Path("logs")
-PLOT_DIR = Path("plots")
-DATA_INTERVAL = "1h"
-MA_DAYS = 252
-INITIAL_SHARES = 200
-GRID_STEP = 2
-DEEP_GRID_STEP = 3
-FRACTIONAL_UNIT = 0.001
-MID_BUY_SHARES = 20
-MID_SELL_SHARES = 15
-MID_MIN_SHARES = 120
-HIGH_BUY_SHARES = 15
-HIGH_SELL_SHARES = 20
-HIGH_MIN_SHARES = 80
-DEEP_BUY_SHARES = 15
-DEEP_SELL_SHARES = 10
-DEEP_MIN_SHARES = 120
-HIGH_PRICE_MULTIPLE = 1.25
-DEEP_LOWER_MULTIPLE = 0.50
-HARVEST_CASH_THRESHOLD = 5_000
-HARVEST_AMOUNT = 500
-HARVEST_LOOKBACK_DAYS = 5
-SUBSIDY_AMOUNT = 1_000
-SUBSIDY_CASH_THRESHOLD = 100
-EXTRA_BUY_CASH_THRESHOLD = 5_000
-EXTRA_BUY_SHARES = 5
+CONFIG_FILE = Path("config/default.yaml")
+
+
+def load_config(path):
+    with path.open() as file:
+        return yaml.safe_load(file)
+
+
+CONFIG = load_config(CONFIG_FILE)
+SYMBOL = CONFIG["symbol"]
+START = CONFIG["start"]
+END = CONFIG["end"]
+CASH = CONFIG["account"]["initial_cash"]
+COMMISSION = CONFIG["account"]["commission"]
+SHOW_PLOT = CONFIG["show_plot"]
+DATA_DIR = Path(CONFIG["paths"]["data_dir"])
+LOG_DIR = Path(CONFIG["paths"]["log_dir"])
+PLOT_DIR = Path(CONFIG["paths"]["plot_dir"])
+DATA_INTERVAL = CONFIG["data_interval"]
+MA_DAYS = CONFIG["moving_average"]["window_days"]
+INITIAL_SHARES = CONFIG["account"]["initial_shares"]
+FRACTIONAL_UNIT = CONFIG["account"]["fractional_unit"]
+HIGH_BUY_SHARES = CONFIG["zones"]["high"]["buy_shares"]
+HIGH_SELL_SHARES = CONFIG["zones"]["high"]["sell_shares"]
+HIGH_MIN_SHARES = CONFIG["zones"]["high"]["min_shares"]
+HIGH_BUY_STEP = CONFIG["zones"]["high"]["buy_step"]
+HIGH_SELL_STEP = CONFIG["zones"]["high"]["sell_step"]
+MID_BUY_SHARES = CONFIG["zones"]["mid"]["buy_shares"]
+MID_SELL_SHARES = CONFIG["zones"]["mid"]["sell_shares"]
+MID_MIN_SHARES = CONFIG["zones"]["mid"]["min_shares"]
+MID_BUY_STEP = CONFIG["zones"]["mid"]["buy_step"]
+MID_SELL_STEP = CONFIG["zones"]["mid"]["sell_step"]
+DEEP_BUY_SHARES = CONFIG["zones"]["deep"]["buy_shares"]
+DEEP_SELL_SHARES = CONFIG["zones"]["deep"]["sell_shares"]
+DEEP_MIN_SHARES = CONFIG["zones"]["deep"]["min_shares"]
+DEEP_BUY_STEP = CONFIG["zones"]["deep"]["buy_step"]
+DEEP_SELL_STEP = CONFIG["zones"]["deep"]["sell_step"]
+HIGH_PRICE_MULTIPLE = CONFIG["zones"]["high"]["price_multiple"]
+DEEP_LOWER_MULTIPLE = CONFIG["zones"]["deep"]["price_multiple"]
+HARVEST_CASH_THRESHOLD = CONFIG["cash_rules"]["harvest"]["cash_threshold"]
+HARVEST_AMOUNT = CONFIG["cash_rules"]["harvest"]["amount"]
+HARVEST_LOOKBACK_DAYS = CONFIG["cash_rules"]["harvest"]["lookback_trading_days"]
+SUBSIDY_AMOUNT = CONFIG["cash_rules"]["subsidy"]["amount"]
+SUBSIDY_CASH_THRESHOLD = CONFIG["cash_rules"]["subsidy"]["cash_threshold"]
+EXTRA_BUY_CASH_THRESHOLD = CONFIG["cash_rules"]["extra_buy"]["cash_threshold"]
+EXTRA_BUY_SHARES = CONFIG["cash_rules"]["extra_buy"]["extra_shares"]
 
 
 def SMA(values, n):
@@ -139,32 +153,32 @@ class GridByMA(Strategy):
     def trading_regime(self, price, ma):
         if ma is None:
             return {
-                "buy_step": GRID_STEP,
+                "buy_step": MID_BUY_STEP,
                 "buy_shares": MID_BUY_SHARES,
-                "sell_step": GRID_STEP,
+                "sell_step": MID_SELL_STEP,
                 "sell_shares": MID_SELL_SHARES,
                 "min_shares": 0,
             }
         if price > ma * HIGH_PRICE_MULTIPLE:
             return {
-                "buy_step": GRID_STEP,
+                "buy_step": HIGH_BUY_STEP,
                 "buy_shares": HIGH_BUY_SHARES,
-                "sell_step": GRID_STEP,
+                "sell_step": HIGH_SELL_STEP,
                 "sell_shares": HIGH_SELL_SHARES,
                 "min_shares": HIGH_MIN_SHARES,
             }
         if price >= ma * DEEP_LOWER_MULTIPLE:
             return {
-                "buy_step": GRID_STEP,
+                "buy_step": MID_BUY_STEP,
                 "buy_shares": MID_BUY_SHARES,
-                "sell_step": GRID_STEP,
+                "sell_step": MID_SELL_STEP,
                 "sell_shares": MID_SELL_SHARES,
                 "min_shares": MID_MIN_SHARES,
             }
         return {
-            "buy_step": DEEP_GRID_STEP,
+            "buy_step": DEEP_BUY_STEP,
             "buy_shares": DEEP_BUY_SHARES,
-            "sell_step": GRID_STEP,
+            "sell_step": DEEP_SELL_STEP,
             "sell_shares": DEEP_SELL_SHARES,
             "min_shares": DEEP_MIN_SHARES,
         }

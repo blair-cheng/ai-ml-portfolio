@@ -1,0 +1,4 @@
+PyYAML
+yfinance
+pandas
+matplotlib

@@ -1,0 +1,60 @@
+symbol: NVDL
+start: "2023-01-01"
+end: null
+data_interval: 1h
+show_plot: true
+
+paths:
+  data_dir: data
+  log_dir: logs
+  plot_dir: plots
+
+account:
+  initial_cash: 10000
+  initial_shares: 200
+  commission: 0.001
+  fractional_unit: 0.001
+
+moving_average:
+  window_days: 252
+
+zones:
+  high:
+    condition: "price > 1.25 * ma"
+    price_multiple: 1.25
+    buy_step: 2
+    buy_shares: 15
+    sell_step: 2
+    sell_shares: 20
+    min_shares: 80
+
+  mid:
+    condition: "0.50 * ma <= price <= 1.25 * ma"
+    lower_price_multiple: 0.50
+    upper_price_multiple: 1.25
+    buy_step: 2
+    buy_shares: 20
+    sell_step: 2
+    sell_shares: 15
+    min_shares: 120
+
+  deep:
+    condition: "price < 0.50 * ma"
+    price_multiple: 0.50
+    buy_step: 3
+    buy_shares: 15
+    sell_step: 2
+    sell_shares: 10
+    min_shares: 120
+
+cash_rules:
+  harvest:
+    cash_threshold: 5000
+    amount: 500
+    lookback_trading_days: 5
+  subsidy:
+    cash_threshold: 100
+    amount: 1000
+  extra_buy:
+    cash_threshold: 5000
+    extra_shares: 5
