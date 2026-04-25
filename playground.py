@@ -1,3 +1,5 @@
+import argparse
+import json
 from pathlib import Path
 
 import yaml
@@ -9,7 +11,11 @@ from backtesting import Strategy
 from backtesting.lib import FractionalBacktest
 
 
-CONFIG_FILE = Path("config/default.yaml")
+parser = argparse.ArgumentParser(description="Run the NVDL grid backtest.")
+parser.add_argument("--config", default="config/default.yaml")
+parser.add_argument("--no-plot", action="store_true")
+ARGS = parser.parse_args()
+CONFIG_FILE = Path(ARGS.config)
 
 
 def load_config(path):
@@ -23,7 +29,7 @@ START = CONFIG["start"]
 END = CONFIG["end"]
 CASH = CONFIG["account"]["initial_cash"]
 COMMISSION = CONFIG["account"]["commission"]
-SHOW_PLOT = CONFIG["show_plot"]
+SHOW_PLOT = CONFIG["show_plot"] and not ARGS.no_plot
 DATA_DIR = Path(CONFIG["paths"]["data_dir"])
 LOG_DIR = Path(CONFIG["paths"]["log_dir"])
 PLOT_DIR = Path(CONFIG["paths"]["plot_dir"])
@@ -396,48 +402,49 @@ plot_log = trade_log.copy()
 if not plot_log.empty:
     plot_log["Date"] = pd.to_datetime(plot_log["Date"], format="%y/%m/%d")
 
-fig, axes = plt.subplots(4, 1, figsize=(14, 11), sharex=True)
-data["Close"].plot(ax=axes[0], color="black", linewidth=1, title=f"{SYMBOL} Price and Trades")
-if not plot_log.empty:
-    buys = plot_log[plot_log["Action"] == "BUY"]
-    sells = plot_log[plot_log["Action"] == "SELL"]
-    axes[0].scatter(buys["Date"], buys["Price"], color="tab:green", marker="^", s=35, label="Buy")
-    axes[0].scatter(sells["Date"], sells["Price"], color="tab:red", marker="v", s=35, label="Sell")
-    axes[0].legend(loc="best")
-if not plot_log.empty:
-    plot_log.set_index("Date")[["Cash", "PosValue"]].plot(
-        ax=axes[1],
+if SHOW_PLOT:
+    fig, axes = plt.subplots(4, 1, figsize=(14, 11), sharex=True)
+    data["Close"].plot(ax=axes[0], color="black", linewidth=1, title=f"{SYMBOL} Price and Trades")
+    if not plot_log.empty:
+        buys = plot_log[plot_log["Action"] == "BUY"]
+        sells = plot_log[plot_log["Action"] == "SELL"]
+        axes[0].scatter(buys["Date"], buys["Price"], color="tab:green", marker="^", s=35, label="Buy")
+        axes[0].scatter(sells["Date"], sells["Price"], color="tab:red", marker="v", s=35, label="Sell")
+        axes[0].legend(loc="best")
+    if not plot_log.empty:
+        plot_log.set_index("Date")[["Cash", "PosValue"]].plot(
+            ax=axes[1],
+            linewidth=1,
+            title="Cash vs Position Value",
+        )
+        axes[1].axhline(1000, color="tab:orange", linestyle="--", linewidth=1, label="$1,000")
+        axes[1].axhline(0, color="tab:red", linestyle="--", linewidth=1, label="$0")
+        axes[1].legend(loc="best")
+    else:
+        axes[1].set_title("Cash vs Position Value")
+    net_worth_curve["RealAsset"].plot(
+        ax=axes[2],
+        color="tab:blue",
         linewidth=1,
-        title="Cash vs Position Value",
+        label="RealAsset",
+        title="Real Asset vs Benchmark",
     )
-    axes[1].axhline(1000, color="tab:orange", linestyle="--", linewidth=1, label="$1,000")
-    axes[1].axhline(0, color="tab:red", linestyle="--", linewidth=1, label="$0")
-    axes[1].legend(loc="best")
-else:
-    axes[1].set_title("Cash vs Position Value")
-net_worth_curve["RealAsset"].plot(
-    ax=axes[2],
-    color="tab:blue",
-    linewidth=1,
-    label="RealAsset",
-    title="Real Asset vs Benchmark",
-)
-benchmark_initial_curve.plot(ax=axes[2], color="tab:gray", linewidth=1, linestyle="--", label="Benchmark 10k Buy&Hold")
-axes[2].legend(loc="best")
-real_asset_drawdown.mul(100).plot(
-    ax=axes[3],
-    color="tab:red",
-    linewidth=1,
-    title="Real Asset Drawdown %",
-)
-axes[0].set_ylabel("Price")
-axes[1].set_ylabel("Value")
-axes[2].set_ylabel("Asset")
-axes[3].set_ylabel("Drawdown %")
-axes[3].set_xlabel("Date")
-fig.tight_layout()
-fig.savefig(equity_plot_file, dpi=150)
-plt.close(fig)
+    benchmark_initial_curve.plot(ax=axes[2], color="tab:gray", linewidth=1, linestyle="--", label="Benchmark 10k Buy&Hold")
+    axes[2].legend(loc="best")
+    real_asset_drawdown.mul(100).plot(
+        ax=axes[3],
+        color="tab:red",
+        linewidth=1,
+        title="Real Asset Drawdown %",
+    )
+    axes[0].set_ylabel("Price")
+    axes[1].set_ylabel("Value")
+    axes[2].set_ylabel("Asset")
+    axes[3].set_ylabel("Drawdown %")
+    axes[3].set_xlabel("Date")
+    fig.tight_layout()
+    fig.savefig(equity_plot_file, dpi=150)
+    plt.close(fig)
 
 print("\n=== Raw Data: First 5 Rows ===")
 print(data.head())
@@ -460,6 +467,46 @@ return_on_invested = (total_final_assets / total_invested - 1) * 100
 return_on_initial = (total_final_assets / CASH - 1) * 100
 benchmark_initial_assets = CASH * data["Close"].iloc[-1] / start_price
 benchmark_invested_assets = total_invested * data["Close"].iloc[-1] / start_price
+summary = {
+    "symbol": SYMBOL,
+    "strategy": GridByMA.__name__,
+    "period_start": str(data.index[0].date()),
+    "period_end": str(data.index[-1].date()),
+    "initial_cash": CASH,
+    "start_price": float(start_price),
+    "configured_initial_shares": INITIAL_SHARES,
+    "cash_needed_for_initial_shares": float(initial_cost),
+    "affordable_initial_shares": float(affordable_initial_shares),
+    "final_account_equity": float(stats["Equity Final [$]"]),
+    "real_final_assets": float(total_final_assets),
+    "subsidized_cash": float(strategy.ledger_subsidized),
+    "total_invested_cash": float(total_invested),
+    "profit_on_invested_cash": float(profit_on_invested),
+    "return_on_invested_cash": float(return_on_invested),
+    "return_on_initial_cash": float(return_on_initial),
+    "benchmark_initial_assets": float(benchmark_initial_assets),
+    "benchmark_invested_assets": float(benchmark_invested_assets),
+    "buy_hold_return": float(stats["Buy & Hold Return [%]"]),
+    "max_drawdown": float(stats["Max. Drawdown [%]"]),
+    "real_asset_max_drawdown": float(max_real_asset_drawdown),
+    "benchmark_initial_max_drawdown": float(max_benchmark_initial_drawdown),
+    "trades": int(stats["# Trades"]),
+    "win_rate": float(stats["Win Rate [%]"]),
+    "commissions": float(stats["Commissions [$]"]),
+    "final_cash": float(strategy.ledger_cash),
+    "final_shares": float(strategy.ledger_shares),
+    "minimum_logged_shares": float(min_logged_shares),
+    "final_position_value": float(strategy.ledger_shares * data["Close"].iloc[-1]),
+    "realized_gain": float(strategy.ledger_realized_pnl),
+    "harvested_cash": float(strategy.ledger_harvested),
+    "net_external_cash_flow": float(strategy.ledger_harvested - strategy.ledger_subsidized),
+    "planned_buys": int(strategy.planned_buys),
+    "submitted_buys": int(strategy.executed_buys),
+    "skipped_buys": int(strategy.skipped_buys),
+    "planned_sells": int(strategy.planned_sells),
+    "submitted_sells": int(strategy.executed_sells),
+    "skipped_sells": int(strategy.skipped_sells),
+}
 print(f"Final Account Equity: ${stats['Equity Final [$]']:,.2f}")
 print(f"Real Final Assets: ${total_final_assets:,.2f}")
 print(f"Subsidized Cash: ${strategy.ledger_subsidized:,.2f}")
@@ -505,3 +552,5 @@ if SHOW_PLOT:
     html_plot_file = PLOT_DIR / f"{SYMBOL}_{DATA_INTERVAL or '1d'}_backtest.html"
     bt.plot(filename=str(html_plot_file), superimpose="M", open_browser=False)
     print(f"Backtest HTML Plot: {html_plot_file}")
+
+print("SUMMARY_JSON " + json.dumps(summary, sort_keys=True))

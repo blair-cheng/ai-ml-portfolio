@@ -94,6 +94,8 @@ Yahoo 当前可用范围：
 - `logs/NVDL_trade_log.csv`：对齐后的交易日志，适合直接用文本方式查看
 - `plots/NVDL_1h_equity.png`：价格、买卖点、现金/持仓市值、回撤图
 - `plots/NVDL_1h_backtest.html`：Backtesting.py 交互图
+- `results/parameter_sweep_results.csv`：参数实验结果表
+- `reports/top_strategies.md`：参数实验排名报告
 
 ## 当前回测结果
 
@@ -146,3 +148,33 @@ python playground.py
 ```
 
 修改策略参数时，优先改 `config/default.yaml`，不要直接改 `playground.py` 顶部常量。
+
+## 参数实验
+
+```bash
+python run_experiments.py
+```
+
+实验参数写在 `config/experiments.yaml`。当前版本做单因素测试：每次只改变一个参数，其他参数保持 `config/default.yaml` 的 baseline。
+
+输出：
+
+- `results/parameter_sweep_results.csv`
+- `reports/top_strategies.md`
+
+当前 sweep 的 baseline：
+
+- Score：`65.49`
+- Return On Invested Cash：`102.04%`
+- Real Asset Max Drawdown：`-32.93%`
+- Subsidized Cash：`8000.00`
+- Harvested Cash：`10500.00`
+
+当前 sweep 分数最高的单因素变体：
+
+- `zones.mid.sell_shares=10`
+- Score：`80.60`
+- Return On Invested Cash：`118.68%`
+- Real Asset Max Drawdown：`-35.91%`
+- Subsidized Cash：`10000.00`
+- Harvested Cash：`9000.00`

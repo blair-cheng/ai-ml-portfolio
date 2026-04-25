@@ -1,0 +1,8 @@
+single_factor:
+  moving_average.window_days: [126, 189, 252, 315, 378]
+  zones.high.price_multiple: [1.15, 1.20, 1.25, 1.30]
+  zones.deep.price_multiple: [0.40, 0.50, 0.60]
+  zones.mid.buy_shares: [10, 15, 20, 25]
+  zones.mid.sell_shares: [10, 15, 20]
+  cash_rules.harvest.cash_threshold: [4000, 5000, 6000, 8000]
+  cash_rules.harvest.amount: [300, 500, 800, 1000]
